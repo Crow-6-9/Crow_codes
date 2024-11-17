@@ -1,0 +1,12 @@
+
+SELECT c.country_name, count(*) total_customers,
+round(avg(i.total_price), 6) avg_total_price 
+from country c 
+join  city ct on 
+c.id=ct.country_id
+JOIN customer cu on 
+ct.id=cu.city_id
+join 
+invoice i on cu.id=i.customer_id
+GROUP by c.country_name 
+having avg(i.total_price)> (select avg(total_price) from invoice);
