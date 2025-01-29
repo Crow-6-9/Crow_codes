@@ -1,0 +1,29 @@
+WITH difference AS (
+    SELECT
+        *,
+        LAG(dt) OVER (PARTITION BY sender ORDER BY dt) AS prev_dt,
+        ROW_NUMBER() OVER (PARTITION BY sender ORDER BY dt) AS rownumber
+    FROM transactions
+),
+rn AS (
+    SELECT
+        rownumber
+    FROM difference
+    WHERE prev_dt IS NOT NULL AND TIMESTAMPDIFF(MINUTE, prev_dt, dt) < 60
+),
+sequences AS (
+    SELECT
+        *,
+        SUM(CASE WHEN prev_dt IS NULL OR TIMESTAMPDIFF(MINUTE, prev_dt, dt) >= 60 THEN 1 ELSE 0 END) 
+            OVER (PARTITION BY sender ORDER BY dt ROWS UNBOUNDED PRECEDING) AS sequence_id
+    FROM difference
+)
+ SELECT sender,
+    MIN(dt) AS sequence_start,
+    MAX(dt) AS sequence_end,
+    COUNT(*) AS transactions_count,
+    SUM(amount) AS transactions_sum
+FROM sequences
+GROUP BY sender, sequence_id
+HAVING SUM(amount) >= 150
+ORDER BY sender, sequence_start, sequence_end;
